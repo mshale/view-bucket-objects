@@ -47,10 +47,11 @@ resource "google_cloudfunctions2_function" "list_bucket_objects" {
   }
 
   service_config {
-    max_instance_count = 10
-    min_instance_count = 0
-    available_memory   = "256M"
-    timeout_seconds    = 60
+    max_instance_count    = 10
+    min_instance_count    = 0
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    service_account_email = google_service_account.function_sa.email
 
     environment_variables = {
       BUCKET_NAME = var.bucket_name
@@ -59,6 +60,8 @@ resource "google_cloudfunctions2_function" "list_bucket_objects" {
     ingress_settings               = "ALLOW_ALL"
     all_traffic_on_latest_revision = true
   }
+
+  depends_on = [google_service_account.function_sa]
 }
 
 # Allow public access to the Cloud Function
