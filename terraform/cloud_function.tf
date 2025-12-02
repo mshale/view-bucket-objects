@@ -12,7 +12,7 @@ data "archive_file" "function_source" {
   output_path = "${path.module}/function-source.zip"
 
   source {
-    content  = file("${path.module}/../main.py")
+    content  = file("${path.module}/../src/main.py")
     filename = "main.py"
   }
 
