@@ -7,7 +7,7 @@ import pytest
 from flask import Flask
 from werkzeug.datastructures import ImmutableMultiDict
 
-from main import list_bucket_objects
+from src.main import list_bucket_objects
 
 
 # Create Flask app for testing context

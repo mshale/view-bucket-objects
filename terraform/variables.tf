@@ -6,7 +6,7 @@ variable "project_id" {
 variable "region" {
   description = "GCP region for Cloud Function deployment"
   type        = string
-  default     = "us-central1"
+  default     = "europe-west2"
 }
 
 variable "bucket_name" {
