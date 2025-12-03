@@ -59,7 +59,10 @@ def list_bucket_objects(request):
     project_id = os.environ.get("PROJECT_ID")
 
     try:
-        client = storage.Client(project=project_id)
+        if project_id:
+            client = storage.Client(project=project_id)
+        else:
+            client = storage.Client()
         bucket = client.bucket(bucket_name)
         blobs_iter = client.list_blobs(
             bucket,
