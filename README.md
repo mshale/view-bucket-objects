@@ -121,7 +121,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 2. Test locally:
 
 ```bash
-python /src/main.py
+python main.py
 
 curl "http://127.0.0.1:5000/function/get-objects"
 ```
