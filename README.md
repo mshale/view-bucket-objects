@@ -55,8 +55,8 @@ curl "http://<load-balancer-ip>/?bucket_name=my-bucket&max_results=100&page_toke
 Create a bucket on GCP to store the temporary txt files, you can then generate random files locally and push them to the GCP cloud storage bucket.
 
 ```bash
-export PROJECT_ID=your-project_id
-export BUCKET_NAME=Your-bucket-name
+export PROJECT_ID=your-project-id
+export BUCKET_NAME=your-bucket-name
 mkdir -p sample_files
 for i in $(seq -w 1 2000); do head -c $((RANDOM+1000)) /dev/urandom > "sample_files/file${i}.txt"; done
 gsutil -m cp sample_files/*.txt gs://YOUR_BUCKET_NAME/
