@@ -58,23 +58,23 @@ class TestListBucketObjects:
             assert response_json["objects"][1]["size"] == 4321
             assert "next_page_token" not in response_json
 
-@patch("src.main.storage.Client")
-def test_list_objects_with_pagination(mock_client_class):
-    with app.app_context():
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
-        mock_blobs = [MockBlob("file001.txt", 1234)]
-        mock_blob_iterator = MockBlobIterator(mock_blobs, next_page_token="ABC123")
-        mock_client.list_blobs.return_value = mock_blob_iterator
+    @patch("src.main.storage.Client")
+    def test_list_objects_with_pagination(self, mock_client_class):
+        with app.app_context():
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_blobs = [MockBlob("file001.txt", 1234)]
+            mock_blob_iterator = MockBlobIterator(mock_blobs, next_page_token="ABC123")
+            mock_client.list_blobs.return_value = mock_blob_iterator
 
-        request = create_mock_request({"bucket_name": "test-bucket"})
-        response_data, status_code, headers = list_bucket_objects(request)
-        response_json = json.loads(response_data.get_data(as_text=True))
+            request = create_mock_request({"bucket_name": "test-bucket"})
+            response_data, status_code, headers = list_bucket_objects(request)
+            response_json = json.loads(response_data.get_data(as_text=True))
 
-        assert status_code == 200
-        assert "objects" in response_json
-        assert len(response_json["objects"]) == 1
-        assert response_json["objects"][0]["name"] == "file001.txt"
-        assert response_json["objects"][0]["size"] == 1234
-        assert response_json["next_page_token"] == "ABC123"
-        assert headers["Access-Control-Allow-Origin"] == "*"
+            assert status_code == 200
+            assert "objects" in response_json
+            assert len(response_json["objects"]) == 1
+            assert response_json["objects"][0]["name"] == "file001.txt"
+            assert response_json["objects"][0]["size"] == 1234
+            assert response_json["next_page_token"] == "ABC123"
+            assert headers["Access-Control-Allow-Origin"] == "*"
