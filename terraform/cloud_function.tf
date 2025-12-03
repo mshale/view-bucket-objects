@@ -1,4 +1,4 @@
-# Terraform configuration for a Google Cloud Function (Gen 2) that lists objects in a GCS bucket
+# Terraform configuration for Cloud Function infrastructure including APIs and storage
 
 # Generate a random suffix for unique bucket names
 resource "random_id" "bucket_suffix" {
