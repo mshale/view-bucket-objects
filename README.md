@@ -11,7 +11,6 @@ This project provides an HTTP endpoint served by a GCP HTTP Load Balancer that f
 - **HTTP Endpoint**: Accessible via GCP HTTP Load Balancer
 - **Pagination Support**: Returns up to 1000 objects per request with pagination tokens
 - **JSON Response**: Returns object names and sizes in a structured JSON format
-- **CORS Support**: Enabled for cross-origin requests
 
 ## API Response Format
 
@@ -53,6 +52,16 @@ curl "http://<load-balancer-ip>/?bucket_name=my-bucket&max_results=100&page_toke
 
 ## Deployment
 
+Create a bucket on GCP to store the temporary txt files, you can then generate random files locally and push them to the GCP cloud storage bucket.
+
+```bash
+export PROJECT_ID=your-project_id
+export BUCKET_NAME=Your-bucket-name
+mkdir -p sample_files
+for i in $(seq -w 1 2000); do head -c $((RANDOM+1000)) /dev/urandom > "sample_files/file${i}.txt"; done
+gsutil -m cp sample_files/*.txt gs://YOUR_BUCKET_NAME/
+```
+
 ### Prerequisites
 
 - Terraform >= 1.0.0
@@ -67,18 +76,17 @@ curl "http://<load-balancer-ip>/?bucket_name=my-bucket&max_results=100&page_toke
 cd terraform
 ```
 
-2. Initialize Terraform:
-
-```bash
-terraform init
-```
-
-3. Create a `terraform.tfvars` file:
+2. Create a `terraform.tfvars` file:
 
 ```hcl
 project_id  = "your-gcp-project-id"
-region      = "us-central1"
-bucket_name = "your-bucket-to-query"
+content_bucket_name = "your-bucket-to-query"
+region              = "europe-west2"
+```
+3. Initialize Terraform:
+
+```bash
+terraform init
 ```
 
 4. Apply the configuration:
@@ -110,29 +118,27 @@ terraform output load_balancer_url
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-2. Run the function locally:
+2. Test locally:
 
 ```bash
-functions-framework --target=list_bucket_objects --port=8080
-```
+python /src/main.py
 
-3. Test locally:
-
-```bash
-curl "http://localhost:8080/?bucket_name=your-test-bucket"
+curl "http://127.0.0.1:5000/function/get-objects"
 ```
 
 ### Run Tests
 
 ```bash
-pytest test_main.py -v
+PYTHON=/src pytest tests/test_main.py -v
+
+PYTHON=/src pytest tests/test_main.py -v -k "test_list_objects_success"
 ```
 
-### Run Tests with Coverage
+<!-- ### Run Tests with Coverage
 
 ```bash
-pytest test_main.py -v --cov=main --cov-report=term-missing
-```
+PYTHON=/src pytest tests/test_main.py -v --cov=main --cov-report=term-missing
+``` -->
 
 ## Architecture
 
@@ -155,7 +161,7 @@ pytest test_main.py -v --cov=main --cov-report=term-missing
 ├── test_main.py           # Unit tests
 ├── README.md              # This file
 └── terraform/
-    ├── main.tf            # Provider configuration
+    ├── provider.tf            # Provider configuration
     ├── variables.tf       # Input variables
     ├── outputs.tf         # Output values
     ├── cloud_function.tf  # Cloud Function resources
