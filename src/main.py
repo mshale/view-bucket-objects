@@ -86,8 +86,7 @@ def list_bucket_objects_route():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-    if request.path != "/function/get-objects":
-        return jsonify({"error": "Not Found"}), 404
+    return jsonify({"error": "Not Found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
