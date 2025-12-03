@@ -7,6 +7,41 @@ import os
 app = Flask(__name__)
 
 def list_bucket_objects(request):
+    """
+    List objects in a Google Cloud Storage bucket via HTTP GET request.
+
+    Parameters:
+        request (flask.Request): The HTTP request object. Expects the following query parameters:
+            - bucket_name (str, required): Name of the GCS bucket. Can also be set via BUCKET_NAME environment variable.
+            - page_token (str, optional): Token for pagination to retrieve the next set of results.
+            - max_results (int, optional): Maximum number of objects to return (default: 2000, capped at 10).
+
+    Returns:
+        flask.Response: JSON response with the following format:
+            {
+                "objects": [
+                    {"name": "<object_name>", "size": <object_size>},
+                    ...
+                ],
+                "next_page_token": "<token>"  # Only present if more results are available
+            }
+        On error, returns:
+            {
+                "error": "<error_message>"
+            }
+        All responses include CORS headers.
+
+    Example:
+        GET /function/get-objects?bucket_name=my-bucket&max_results=5
+        Response:
+        {
+            "objects": [
+                {"name": "file1.txt", "size": 1234},
+                {"name": "file2.txt", "size": 5678}
+            ],
+            "next_page_token": "abc123"
+        }
+    """
     headers = {"Access-Control-Allow-Origin": "*"}
     bucket_name = request.args.get("bucket_name") or os.environ.get("BUCKET_NAME")
     if not bucket_name:
