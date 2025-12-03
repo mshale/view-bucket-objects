@@ -1,6 +1,34 @@
+# Terraform configuration for Cloud Function infrastructure including APIs and storage
+
+# Generate a random suffix for unique bucket names
+resource "random_id" "bucket_suffix" {
+  byte_length = 6
+}
+
+locals {
+  api_services = [
+    "cloudfunctions.googleapis.com",
+    "run.googleapis.com",
+    "storage.googleapis.com",
+    "compute.googleapis.com",
+  ]
+}
+
+locals {
+  bucket_name = [
+    var.content_bucket_name,
+    google_storage_bucket.function_source.name
+  ]
+}
+# Enable the required Google Cloud APIs - Cloud Functions API, Cloud Run API, Cloud Storage API, Compute Engine API
+resource "google_project_service" "cloudfunctions" {
+  for_each = toset(local.api_services)
+  service  = each.key
+}
+
 # Create a GCS bucket for the Cloud Function source code
 resource "google_storage_bucket" "function_source" {
-  name                        = "${var.project_id}-function-source"
+  name                        = "${random_id.bucket_suffix.hex}-${var.project_id}"
   location                    = var.region
   uniform_bucket_level_access = true
   force_destroy               = true
@@ -47,14 +75,14 @@ resource "google_cloudfunctions2_function" "list_bucket_objects" {
   }
 
   service_config {
-    max_instance_count    = 10
+    max_instance_count    = 2
     min_instance_count    = 0
     available_memory      = "256M"
     timeout_seconds       = 60
     service_account_email = google_service_account.function_sa.email
 
     environment_variables = {
-      BUCKET_NAME = var.bucket_name
+      BUCKET_NAME = var.content_bucket_name
     }
 
     ingress_settings               = "ALLOW_ALL"
@@ -81,7 +109,8 @@ resource "google_service_account" "function_sa" {
 
 # Grant the service account read access to the target bucket
 resource "google_storage_bucket_iam_member" "bucket_reader" {
-  bucket = var.bucket_name
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.function_sa.email}"
+  for_each = toset(local.bucket_name)
+  bucket   = each.value
+  role     = "roles/storage.objectViewer"
+  member   = "serviceAccount:${google_service_account.function_sa.email}"
 }

@@ -6,11 +6,10 @@ variable "project_id" {
 variable "region" {
   description = "GCP region for Cloud Function deployment"
   type        = string
-  default     = "europe-west2"
 }
 
-variable "bucket_name" {
-  description = "Name of the GCS bucket to query"
+variable "content_bucket_name" {
+  description = "Names of content buckets"
   type        = string
 }
 

@@ -208,4 +208,13 @@ __marimo__/
 
 # terraform
 .terraform*
+terraform.tfstate*
+tfplan*
+*.tfvars
+#cloudfunction
+function-source.zip
+
+# test files and directories
+sample*
+
 
