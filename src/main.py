@@ -1,95 +1,68 @@
-"""GCP Cloud Function to list objects from a Cloud Storage bucket."""
+"""GCP Cloud Function to list objects from a Cloud Storage bucket.
 
-from flask import Flask, request, jsonify
-from google.cloud import storage
+This version exposes a single HTTP function compatible with Cloud Functions Gen 2:
+- Uses @functions_framework.http decorator so the Functions Framework (and GCF runtime)
+  can discover and invoke the function.
+- Handles CORS preflight (OPTIONS).
+- Reads BUCKET_NAME and PROJECT_ID from environment if not provided via query.
+- Returns JSON with objects and optional next_page_token.
+"""
+
 import os
+import functions_framework
+from flask import Request, jsonify
+from google.cloud import storage
 
-app = Flask(__name__)
 
-def list_bucket_objects(request):
-    """
-    List objects in a Google Cloud Storage bucket via HTTP GET request.
+@functions_framework.http
+def list_bucket_objects(request: Request):
+    # CORS headers
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    }
 
-    Parameters:
-        request (flask.Request): The HTTP request object. Expects the following query parameters:
-            - bucket_name (str, required): Name of the GCS bucket. Can also be set via BUCKET_NAME environment variable.
-            - page_token (str, optional): Token for pagination to retrieve the next set of results.
-            - max_results (int, optional): Maximum number of objects to return (default: 2000, capped at 10).
+    # Respond to CORS preflight
+    if request.method == "OPTIONS":
+        return ("", 204, headers)
 
-    Returns:
-        flask.Response: JSON response with the following format:
-            {
-                "objects": [
-                    {"name": "<object_name>", "size": <object_size>},
-                    ...
-                ],
-                "next_page_token": "<token>"  # Only present if more results are available
-            }
-        On error, returns:
-            {
-                "error": "<error_message>"
-            }
-        All responses include CORS headers.
-
-    Example:
-        GET /function/get-objects?bucket_name=my-bucket&max_results=5
-        Response:
-        {
-            "objects": [
-                {"name": "file1.txt", "size": 1234},
-                {"name": "file2.txt", "size": 5678}
-            ],
-            "next_page_token": "abc123"
-        }
-    """
-    headers = {"Access-Control-Allow-Origin": "*"}
+    # Query params and env fallbacks
     bucket_name = request.args.get("bucket_name") or os.environ.get("BUCKET_NAME")
     if not bucket_name:
-        return (
-            jsonify({"error": "Missing required parameter: bucket_name"}),
-            400,
-            headers,
-        )
+        return (jsonify({"error": "Missing required parameter: bucket_name"}), 400, headers)
 
     page_token = request.args.get("page_token")
-    max_results = request.args.get("max_results", 2000, type=int)
-    if max_results > 10:
-        max_results = 10
+    try:
+        max_results = int(request.args.get("max_results", "1000"))
+    except (ValueError, TypeError):
+        return (jsonify({"error": "max_results must be an integer"}), 400, headers)
+
+    # cap max_results to a reasonable number
+    if max_results > 1000:
+        max_results = 1000
 
     project_id = os.environ.get("PROJECT_ID")
 
     try:
-        if project_id:
-            client = storage.Client(project=project_id)
-        else:
-            client = storage.Client()
-        bucket = client.bucket(bucket_name)
+        client = storage.Client(project=project_id) if project_id else storage.Client()
+        # list_blobs accepts bucket name or bucket object
         blobs_iter = client.list_blobs(
-            bucket,
+            bucket_name,
             max_results=max_results,
             page_token=page_token,
         )
+
         objects = [{"name": blob.name, "size": blob.size} for blob in blobs_iter]
+
+        # HTTPIterator in google-cloud-storage exposes next_page_token on the iterator in many versions
         next_page_token = getattr(blobs_iter, "next_page_token", None)
+
         response_data = {"objects": objects}
         if next_page_token:
             response_data["next_page_token"] = next_page_token
+
         return (jsonify(response_data), 200, headers)
     except Exception as e:
-        return (
-            jsonify({"error": str(e)}),
-            500,
-            headers,
-        )
-
-@app.route("/function/get-objects", methods=["GET"])
-def list_bucket_objects_route():
-    return list_bucket_objects(request)
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    return jsonify({"error": "Not Found"}), 404
-
-if __name__ == "__main__":
-    app.run(debug=True)
+        # Return error and include CORS headers for client handling
+        return (jsonify({"error": str(e)}), 500, headers)
