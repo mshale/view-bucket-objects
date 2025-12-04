@@ -14,12 +14,6 @@ locals {
   ]
 }
 
-locals {
-  bucket_name = [
-    var.content_bucket_name,
-    google_storage_bucket.function_source.name
-  ]
-}
 # Enable the required Google Cloud APIs - Cloud Functions API, Cloud Run API, Cloud Storage API, Compute Engine API
 resource "google_project_service" "cloudfunctions" {
   for_each = toset(local.api_services)
@@ -109,8 +103,14 @@ resource "google_service_account" "function_sa" {
 
 # Grant the service account read access to the target bucket
 resource "google_storage_bucket_iam_member" "bucket_reader" {
-  for_each = toset(local.bucket_name)
-  bucket   = each.value
-  role     = "roles/storage.objectViewer"
-  member   = "serviceAccount:${google_service_account.function_sa.email}"
+  bucket = google_storage_bucket.function_source.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.function_sa.email}"
+}
+
+#Grant permissions to read objects in the content bucket
+resource "google_storage_bucket_iam_member" "content_bucket_reader" {
+  bucket = var.content_bucket_name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.function_sa.email}"
 }

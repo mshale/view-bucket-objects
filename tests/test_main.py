@@ -31,9 +31,12 @@ def create_mock_request(args=None):
 class TestListBucketObjects:
     def test_missing_bucket_name(self):
         with app.app_context():
-            os.environ.pop("BUCKET_NAME", None)  
+            os.environ.pop("BUCKET_NAME", None)
             request = create_mock_request({})
-            response_data, status_code, headers = list_bucket_objects(request)
+            # The function in src.main is decorated with @functions_framework.http.
+            # Call the original wrapped function for unit testing via __wrapped__.
+            response = list_bucket_objects.__wrapped__(request)
+            response_data, status_code, headers = response
             response_json = json.loads(response_data.get_data(as_text=True))
             assert status_code == 400
             assert response_json["error"] == "Missing required parameter: bucket_name"
@@ -47,7 +50,8 @@ class TestListBucketObjects:
             mock_blob_iterator = MockBlobIterator(mock_blobs)
             mock_client.list_blobs.return_value = mock_blob_iterator
             request = create_mock_request({"bucket_name": "test-bucket"})
-            response_data, status_code, headers = list_bucket_objects(request)
+            response = list_bucket_objects.__wrapped__(request)
+            response_data, status_code, headers = response
             response_json = json.loads(response_data.get_data(as_text=True))
             assert status_code == 200
             assert "objects" in response_json
@@ -68,7 +72,8 @@ class TestListBucketObjects:
             mock_client.list_blobs.return_value = mock_blob_iterator
 
             request = create_mock_request({"bucket_name": "test-bucket"})
-            response_data, status_code, headers = list_bucket_objects(request)
+            response = list_bucket_objects.__wrapped__(request)
+            response_data, status_code, headers = response
             response_json = json.loads(response_data.get_data(as_text=True))
 
             assert status_code == 200

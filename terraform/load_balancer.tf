@@ -29,22 +29,33 @@ resource "google_compute_backend_service" "cloud_function" {
   }
 }
 
-# Create a backend service
-resource "google_compute_backend_service" "default" {
-  name        = "${var.function_name}-backend"
-  protocol    = "HTTP"
-  port_name   = "http"
-  timeout_sec = 30
-  enable_cdn  = false
+
+# serverless NEG for the Cloud run 404 backend
+resource "google_compute_region_network_endpoint_group" "not_found_backend_neg" {
+  name                  = "not-found-backend-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+
+  cloud_run {
+    service = google_cloud_run_service.not_found_backend.name
+  }
+  depends_on = [google_cloud_run_service.not_found_backend]
+}
+
+# Backend service for the Cloud Run 404 backend NEG
+resource "google_compute_backend_service" "not_found_backend" {
+  name                            = "not-found-backend"
+  protocol                        = "HTTP"
+  load_balancing_scheme           = "EXTERNAL"
   backend {
-    group = google_compute_region_network_endpoint_group.cloud_function_neg.id
+    group = google_compute_region_network_endpoint_group.not_found_backend_neg.id
   }
 }
 
 # Create a URL map
 resource "google_compute_url_map" "default" {
   name            = "${var.function_name}-url-map"
-  default_service = google_compute_backend_service.default.id
+  default_service = google_compute_backend_service.not_found_backend.self_link
 
   host_rule {
     hosts        = ["*"]
@@ -53,11 +64,11 @@ resource "google_compute_url_map" "default" {
 
   path_matcher {
     name            = "function-matcher"
-    default_service = google_compute_backend_service.default.id
+    default_service = google_compute_backend_service.not_found_backend.self_link
 
     path_rule {
       paths   = ["/function/get-objects"]
-      service = google_compute_backend_service.cloud_function.id
+      service = google_compute_backend_service.cloud_function.self_link
     }
   }
 }
